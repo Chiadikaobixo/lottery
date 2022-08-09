@@ -13,6 +13,7 @@ beforeEach(async () => {
     lottery = await new web3.eth.Contract(abi)
         .deploy({ data: evm.bytecode.object })
         .send({ from: fetchedAccounts[0], gas: '1000000' })
+    
 })
 
 describe('lottery contract', () => {
@@ -20,12 +21,12 @@ describe('lottery contract', () => {
         assert.ok(lottery.options.address)
     })
 
-    it('allow one account to enter', async() => {
+    it('allow one account to enter', async () => {
         await lottery.methods.addPlayer().send({
             from: fetchedAccounts[0],
             value: web3.utils.toWei('0.02', 'ether')
         })
-        
+
         const players = await lottery.methods.getPlayers().call({
             from: fetchedAccounts[0]
         })
@@ -34,7 +35,7 @@ describe('lottery contract', () => {
         assert.equal(1, players.length)
     })
 
-    it('allow multiple account to enter', async() => {
+    it('allow multiple account to enter', async () => {
         await lottery.methods.addPlayer().send({
             from: fetchedAccounts[0],
             value: web3.utils.toWei('0.02', 'ether')
@@ -49,7 +50,7 @@ describe('lottery contract', () => {
             from: fetchedAccounts[2],
             value: web3.utils.toWei('0.02', 'ether')
         })
-        
+
         const players = await lottery.methods.getPlayers().call({
             from: fetchedAccounts[0]
         })
@@ -58,5 +59,48 @@ describe('lottery contract', () => {
         assert.equal(fetchedAccounts[1], players[1])
         assert.equal(fetchedAccounts[2], players[2])
         assert.equal(3, players.length)
+    })
+
+    it('requires a minimum amount of ether to enter', async () => {
+        try {
+            await lottery.methods.addPlayer().send({
+                from: fetchedAccounts[0],
+                value: 0
+            })
+            assert(false);
+        } catch (error) {
+            assert(error);
+        }
+    })
+
+    it('only manager can call pickWinner', async() => {
+        try {
+            await lottery.methods.pickWinner().send({
+                from: fetchedAccounts[1]
+            })
+            assert(false);
+        } catch (error) {
+            assert(error);
+        }
+    })
+
+    it('enters player, sends money to the  winner and reset the players array', async() => {
+        await lottery.methods.addPlayer().send({
+            from: fetchedAccounts[0],
+            value: web3.utils.toWei('2', 'ether')
+        })
+
+        const initialBalance = await web3.eth.getBalance(fetchedAccounts[0]);
+
+        await lottery.methods.pickWinner().send({
+            from: fetchedAccounts[0]
+        });
+
+        const finalBalance = await web3.eth.getBalance(fetchedAccounts[0]);
+        const difference = finalBalance - initialBalance
+        assert(difference > web3.utils.toWei('1.8', 'ether'));
+
+        const playersArray = await lottery.methods.getPlayers().call()
+        assert.deepEqual([], playersArray)
     })
 })
