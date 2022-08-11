@@ -21,7 +21,7 @@ const deploy = async () => {
         .deploy({ data: evm.bytecode.object })
         .send({ from: fetchedAccounts[0], gas: '1000000' })
 
-        console.log('Contract ABI', abi)
+        console.log('Contract ABI', JSON.stringify(abi))
         console.log('Contract deployed to', deployedResult.options.address)
         provider.engine.stop()
 }
